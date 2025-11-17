@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -123,17 +124,22 @@ impl Display for ProblemDifficulty {
 struct ImgHandler;
 impl TagHandler for ImgHandler {
     fn handle(&mut self, tag: &html2md::Handle, printer: &mut html2md::StructuredPrinter) {
-        let src = get_tag_attr(tag, "src").unwrap_or_default();
-        let alt = get_tag_attr(tag, "alt");
+        let raw_src = get_tag_attr(tag, "src")
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_default();
 
-        console_debug!("SRC image content: {src}");
-        console_debug!("ALT image content: {alt:?}");
+        let raw_alt = get_tag_attr(tag, "alt");
 
-        if let Some(alt) = alt {
-            printer.append_str(&format!("![{}]({})", alt, &src));
-        } else {
-            printer.append_str(&src);
-        }
+        console_debug!("SRC image content: {raw_src}");
+        console_debug!("ALT image content: {:?}", raw_alt);
+
+        let alt: Cow<'_, str> = match raw_alt {
+            Some(ref a) if !a.trim().is_empty() => Cow::Borrowed(a.trim()),
+            _ => Cow::Borrowed("leetcode"),
+        };
+
+        printer.append_str(&format!("[{}]({})", alt, raw_src));
     }
 
     fn after_handle(&mut self, _printer: &mut html2md::StructuredPrinter) {}
